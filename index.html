@@ -57,7 +57,7 @@ button{font:inherit}.change{border:0;background:#eaf0ff;color:var(--blue);font-w
 <script>
 const SB="https://jiigtmxfepthdeorlnmv.supabase.co",KEY="sb_publishable_N37lWnFWPnDIRd7QBOEVpw_r13WPTyQ",LOCATION_KEY="amg_saved_location_v1";
 const DAYS_NEW=14;
-let all=[],selected=null;
+let all=[],selected=null,contentMap={};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -76,7 +76,8 @@ function render(){
  $("note").classList.remove("hidden");
  if(!list.length){$("shows").innerHTML=`<div class="state"><strong>No new shows here yet</strong>There haven't been any newly added shows in ${esc(selected)} in the last ${DAYS_NEW} days. Try another location.</div>`;return}
  $("shows").innerHTML=list.map(s=>{
-  let img=s.image_url?`<img class="art" src="${esc(s.image_url)}" alt="" loading="lazy" onerror="this.style.display='none'">`:`<div class="fallback">${esc(s.artist||"Live music")}</div>`;
+  let c=contentMap[String(s.id)]||{},effectiveImage=c.image_override_url||s.image_url||"";
+  let img=effectiveImage?`<img class="art" src="${esc(effectiveImage)}" alt="" loading="lazy" onerror="this.style.display='none'">`:`<div class="fallback">${esc(s.artist||"Live music")}</div>`;
   return `<article class="card">${img}<div class="body"><div class="new">${esc(addedLabel(s.first_seen))}</div><h2 class="artist">${esc(s.artist||"Upcoming show")}</h2><div class="meta">${eventDate(s.event_date)}<br>${esc(s.venues?.name || s.city || "")}${s.venues?.name && s.city ? " · "+esc(s.city) : ""}</div>${s.ticket_url?`<a class="ticket" href="${esc(s.ticket_url)}" target="_blank" rel="noopener">FIND TICKETS →</a>`:""}</div></article>`;
  }).join("");
 }
@@ -91,6 +92,7 @@ async function load(){
    if(!r.ok)throw Error(await r.text());
    let x=await r.json();rows.push(...x);if(x.length<1000)break;from+=1000;
   }
+  let cr=await fetch(`${SB}/rest/v1/show_content?select=show_id,image_override_url,youtube_url`,{headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}}); if(cr.ok){let cc=await cr.json();contentMap=Object.fromEntries(cc.map(x=>[String(x.show_id),x]));}
   all=rows;$("loading").classList.add("hidden");
   try{selected=localStorage.getItem(LOCATION_KEY)}catch(e){}
   renderCities();
