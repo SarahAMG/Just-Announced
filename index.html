@@ -56,7 +56,7 @@ button{font:inherit}.change{border:0;background:#eaf0ff;color:var(--blue);font-w
 
 <script>
 const SB="https://jiigtmxfepthdeorlnmv.supabase.co",KEY="sb_publishable_N37lWnFWPnDIRd7QBOEVpw_r13WPTyQ",LOCATION_KEY="amg_saved_location_v1";
-const DAYS_NEW=7;
+const DAYS_NEW=14;
 let all=[],selected=null;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -77,7 +77,7 @@ function render(){
  if(!list.length){$("shows").innerHTML=`<div class="state"><strong>No new shows here yet</strong>There haven't been any newly added shows in ${esc(selected)} in the last ${DAYS_NEW} days. Try another location.</div>`;return}
  $("shows").innerHTML=list.map(s=>{
   let img=s.image_url?`<img class="art" src="${esc(s.image_url)}" alt="" loading="lazy" onerror="this.style.display='none'">`:`<div class="fallback">${esc(s.artist||"Live music")}</div>`;
-  return `<article class="card">${img}<div class="body"><div class="new">${esc(addedLabel(s.first_seen))}</div><h2 class="artist">${esc(s.artist||"Upcoming show")}</h2><div class="meta">${eventDate(s.event_date)} · ${esc(s.city||"")}</div>${s.ticket_url?`<a class="ticket" href="${esc(s.ticket_url)}" target="_blank" rel="noopener">FIND TICKETS →</a>`:""}</div></article>`;
+  return `<article class="card">${img}<div class="body"><div class="new">${esc(addedLabel(s.first_seen))}</div><h2 class="artist">${esc(s.artist||"Upcoming show")}</h2><div class="meta">${eventDate(s.event_date)}<br>${esc(s.venues?.name || s.city || "")}${s.venues?.name && s.city ? " · "+esc(s.city) : ""}</div>${s.ticket_url?`<a class="ticket" href="${esc(s.ticket_url)}" target="_blank" rel="noopener">FIND TICKETS →</a>`:""}</div></article>`;
  }).join("");
 }
 
@@ -86,7 +86,7 @@ async function load(){
   let rows=[],from=0,cut=new Date();cut.setDate(cut.getDate()-(DAYS_NEW-1));cut.setHours(0,0,0,0);
   const cutISO=cut.toISOString();
   while(true){
-   let url=`${SB}/rest/v1/shows?select=id,artist,city,event_date,ticket_url,image_url,venue_id,first_seen&event_date=gte.${dateOnly()}&first_seen=gte.${encodeURIComponent(cutISO)}&order=first_seen.desc&offset=${from}&limit=1000`;
+   let url=`${SB}/rest/v1/shows?select=id,artist,city,event_date,ticket_url,image_url,venue_id,first_seen,venues(name)&event_date=gte.${dateOnly()}&first_seen=gte.${encodeURIComponent(cutISO)}&order=first_seen.desc&offset=${from}&limit=1000`;
    let r=await fetch(url,{headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}});
    if(!r.ok)throw Error(await r.text());
    let x=await r.json();rows.push(...x);if(x.length<1000)break;from+=1000;
