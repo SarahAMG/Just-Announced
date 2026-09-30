@@ -57,7 +57,7 @@ button{font:inherit}.change{border:0;background:#eaf0ff;color:var(--blue);font-w
 <script>
 const SB="https://jiigtmxfepthdeorlnmv.supabase.co",KEY="sb_publishable_N37lWnFWPnDIRd7QBOEVpw_r13WPTyQ",LOCATION_KEY="amg_saved_location_v1";
 const DAYS_NEW=14;
-let all=[],selected=null;
+let all=[],selected=null,contentMap={};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -66,7 +66,7 @@ function parseDate(s){if(!s)return null;let d=new Date(s);return isNaN(d)?null:d
 function eventDate(s){if(!s)return"";let [y,m,d]=String(s).slice(0,10).split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}
 function addedLabel(s){let d=parseDate(s);if(!d)return"New";let today=new Date();today.setHours(0,0,0,0);let x=new Date(d);x.setHours(0,0,0,0);let n=Math.max(0,Math.round((today-x)/86400000));return n===0?"Added today":n===1?"Added yesterday":"Recently added"}
 
-function choose(c){selected=c;trackPageEvent("page_view",{city:c});try{localStorage.setItem(LOCATION_KEY,c)}catch(e){};$("loc").textContent=c;$("picker").classList.add("hidden");$("bar").classList.remove("hidden");render()}
+function choose(c){selected=c;try{localStorage.setItem(LOCATION_KEY,c)}catch(e){};$("loc").textContent=c;$("picker").classList.add("hidden");$("bar").classList.remove("hidden");render()}
 function renderCities(){let cs=[...new Set(all.map(x=>x.city).filter(Boolean))].sort();$("cities").innerHTML=cs.map(c=>`<button type="button" class="city ${selected===c?"active":""}" data-c="${esc(c)}">${esc(c)}</button>`).join("")||"<span>No locations available.</span>";$("cities").querySelectorAll("button").forEach(b=>b.onclick=()=>choose(b.dataset.c))}
 
 function render(){
@@ -76,7 +76,8 @@ function render(){
  $("note").classList.remove("hidden");
  if(!list.length){$("shows").innerHTML=`<div class="state"><strong>No new shows here yet</strong>There haven't been any newly added shows in ${esc(selected)} in the last ${DAYS_NEW} days. Try another location.</div>`;return}
  $("shows").innerHTML=list.map(s=>{
-  let img=s.image_url?`<img class="art" src="${esc(s.image_url)}" alt="" loading="lazy" onerror="this.style.display='none'">`:`<div class="fallback">${esc(s.artist||"Live music")}</div>`;
+  let effectiveImage=s.image_url||"";
+  let img=effectiveImage?`<img class="art" src="${esc(effectiveImage)}" alt="" loading="lazy" onerror="this.style.display='none'">`:`<div class="fallback">${esc(s.artist||"Live music")}</div>`;
   return `<article class="card">${img}<div class="body"><div class="new">${esc(addedLabel(s.first_seen))}</div><h2 class="artist">${esc(s.artist||"Upcoming show")}</h2><div class="meta">${eventDate(s.event_date)}<br>${esc(s.venues?.name || s.city || "")}${s.venues?.name && s.city ? " · "+esc(s.city) : ""}</div>${s.ticket_url?`<a class="ticket" href="${esc(s.ticket_url)}" target="_blank" rel="noopener">FIND TICKETS →</a>`:""}</div></article>`;
  }).join("");
 }
@@ -91,18 +92,14 @@ async function load(){
    if(!r.ok)throw Error(await r.text());
    let x=await r.json();rows.push(...x);if(x.length<1000)break;from+=1000;
   }
+  let cr=await fetch(`${SB}/rest/v1/show_content?select=show_id,image_override_url,youtube_url`,{headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}}); if(cr.ok){let cc=await cr.json();contentMap=Object.fromEntries(cc.map(x=>[String(x.show_id),x]));}
   all=rows;$("loading").classList.add("hidden");
   try{selected=localStorage.getItem(LOCATION_KEY)}catch(e){}
   renderCities();
-  if(selected&&all.some(x=>x.city===selected)){trackPageEvent("page_view",{city:selected});$("loc").textContent=selected;$("picker").classList.add("hidden");$("bar").classList.remove("hidden");render()}
+  if(selected&&all.some(x=>x.city===selected)){$("loc").textContent=selected;$("picker").classList.add("hidden");$("bar").classList.remove("hidden");render()}
  }catch(e){console.error(e);$("loading").classList.add("hidden");$("picker").classList.add("hidden");$("shows").innerHTML='<div class="state"><strong>We couldn’t load new shows</strong>Please try again shortly.</div>'}
 }
 $("change").onclick=()=>$("picker").classList.toggle("hidden");
-
-async function trackPageEvent(eventType, extra={}){
- try{await fetch(`${SB}/rest/v1/page_analytics`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({page_name:"just_announced",event_type:eventType,city:selected||null,...extra})})}catch(e){console.warn("Analytics event not recorded",e)}
-}
-document.addEventListener("click",e=>{const a=e.target.closest("a.ticket");if(a){const card=a.closest(".card");trackPageEvent("ticket_click",{clicked_artist:card?.querySelector(".artist")?.textContent?.trim()||null})}});
 load();
 </script>
 </body></html>
