@@ -64,7 +64,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 function dateOnly(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 function parseDate(s){if(!s)return null;let d=new Date(s);return isNaN(d)?null:d}
 function eventDate(s){if(!s)return"";let [y,m,d]=String(s).slice(0,10).split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}
-function addedLabel(s){let d=parseDate(s);if(!d)return"New";let today=new Date();today.setHours(0,0,0,0);let x=new Date(d);x.setHours(0,0,0,0);let n=Math.max(0,Math.round((today-x)/86400000));return n===0?"Added today":n===1?"Added yesterday":`Added ${n} days ago`}
+function addedLabel(s){let d=parseDate(s);if(!d)return"New";let today=new Date();today.setHours(0,0,0,0);let x=new Date(d);x.setHours(0,0,0,0);let n=Math.max(0,Math.round((today-x)/86400000));return n===0?"Added today":n===1?"Added 1 day ago":"Just added"}
 
 function choose(c){selected=c;try{localStorage.setItem(LOCATION_KEY,c)}catch(e){};$("loc").textContent=c;$("picker").classList.add("hidden");$("bar").classList.remove("hidden");render()}
 function renderCities(){let cs=[...new Set(all.map(x=>x.city).filter(Boolean))].sort();$("cities").innerHTML=cs.map(c=>`<button type="button" class="city ${selected===c?"active":""}" data-c="${esc(c)}">${esc(c)}</button>`).join("")||"<span>No locations available.</span>";$("cities").querySelectorAll("button").forEach(b=>b.onclick=()=>choose(b.dataset.c))}
