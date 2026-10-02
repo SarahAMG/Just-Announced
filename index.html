@@ -58,7 +58,7 @@ button{font:inherit}.change{border:0;background:#eaf0ff;color:var(--blue);font-w
 const SB="https://jiigtmxfepthdeorlnmv.supabase.co",KEY="sb_publishable_N37lWnFWPnDIRd7QBOEVpw_r13WPTyQ",LOCATION_KEY="amg_saved_location_v1";
 const DAYS_NEW=7;
 let all=[],selected=null;
-const $=id=>document.getElementById(id);
+const $=id=>document.getElementById(id);let defaultArtistImage="";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function dateOnly(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
@@ -76,12 +76,13 @@ function render(){
  $("note").classList.remove("hidden");
  if(!list.length){$("shows").innerHTML=`<div class="state"><strong>No new shows here yet</strong>There haven't been any newly added shows in ${esc(selected)} in the last ${DAYS_NEW} days. Try another location.</div>`;return}
  $("shows").innerHTML=list.map(s=>{
-  let img=s.image_url?`<img class="art" src="${esc(s.image_url)}" alt="" loading="lazy" onerror="this.style.display='none'">`:`<div class="fallback">${esc(s.artist||"Live music")}</div>`;
+  let imageSrc=s.image_url||defaultArtistImage;let img=imageSrc?`<img class="art" src="${esc(imageSrc)}" alt="" loading="lazy" onerror="this.style.display=\'none\'">`:`<div class="fallback">${esc(s.artist||"Live music")}</div>`;
   return `<article class="card" data-artist="${esc(s.artist||"")}" data-city="${esc(s.city||"")}">${img}<div class="body"><div class="new">${esc(addedLabel(s.first_seen))}</div><h2 class="artist">${esc(s.artist||"Upcoming show")}</h2><div class="meta">${eventDate(s.event_date)} · ${esc(s.city||"")}</div>${s.ticket_url?`<a class="ticket" href="${esc(s.ticket_url)}" target="_blank" rel="noopener">FIND TICKETS →</a>`:""}</div></article>`;
  }).join("");
 }
 
 async function load(){
+ try{const dr=await fetch(`${SB}/rest/v1/halloween_config?show_id=eq.__settings__&select=default_artist_image_url`,{headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}});if(dr.ok){const dj=await dr.json();defaultArtistImage=dj[0]?.default_artist_image_url||""}}catch(e){}
  try{
   let rows=[],from=0,cut=new Date();cut.setDate(cut.getDate()-(DAYS_NEW-1));cut.setHours(0,0,0,0);
   const cutISO=cut.toISOString();
