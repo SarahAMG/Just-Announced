@@ -53,7 +53,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 function read(){try{const v=JSON.parse(localStorage.getItem(KEY)||'{}');return v&&typeof v==='object'&&!Array.isArray(v)?v:{}}catch(e){return {}}}
 let state=read();const registry=new Map();
 const id=s=>String(s?.id??'').trim();
-const record=s=>({id:id(s),artist:String(s.artist||''),city:String(s.city||''),venue:String(s.venue||s.venues?.name||''),date:String(s.event_date||s.date||'').slice(0,10),ticket_url:String(s.ticket_url||''),image_url:String(s.image_url||'')});
+const record=s=>({id:id(s),artist:String(s.artist||''),city:String(s.city||''),venue:String(s.venues?.name||s.venue_name||s.venue||(s.city==='Liverpool'?'O2 Academy Liverpool':'')),date:String(s.event_date||s.date||'').slice(0,10),ticket_url:String(s.ticket_url||''),image_url:String(s.image_url||'')});
 const pack=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const unpack=s=>JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-s.length%4)%4)))));
 function persist(){localStorage.setItem(KEY,JSON.stringify(state));changed()}
@@ -61,14 +61,14 @@ function changed(){updateHearts();window.dispatchEvent(new Event('o2-favourites-
 function active(){return Object.values(state).filter(x=>x&&!x.deleted&&x.id).sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'))}
 function isSaved(s){return !!(state[id(s)]&&!state[id(s)].deleted)}
 function heart(s){const on=isSaved(s);return `<button class="fav-heart" type="button" data-fav-id="${esc(id(s))}" aria-label="${on?'Remove from':'Add to'} favourites" aria-pressed="${on}" title="${on?'Remove from favourites':'Save show'}">${on?'♥':'♡'}</button>`}
-function register(s){if(id(s))registry.set(id(s),s)}
+function register(s){if(!id(s))return;registry.set(id(s),s);const old=state[id(s)];if(old&&!old.deleted){const fresh=record(s);if(fresh.venue&&fresh.venue!==old.venue){state[id(s)]={...old,venue:fresh.venue};localStorage.setItem(KEY,JSON.stringify(state));}}}
 function updateHearts(){document.querySelectorAll('[data-fav-id]').forEach(b=>{const on=isSaved({id:b.dataset.favId});b.textContent=on?'♥':'♡';b.setAttribute('aria-pressed',String(on));b.setAttribute('aria-label',on?'Remove from favourites':'Add to favourites')})}
 function localSave(s){const x=record(s);if(!x.id)return false;state[x.id]={...(state[x.id]||{}),...x,deleted:isSaved(x),updated:Date.now()};persist();return !state[x.id].deleted}
-function save(s){if(!isHub){const x=record(s);if(!x.id)return false;const ret=location.href.split('#')[0];sessionStorage.setItem('o2-fav-pending',x.id);location.assign(HUB+'#favsync='+pack({op:'toggle',show:x,ret}));return false}return localSave(s)}
+function save(s){return localSave(s)}
 function validReturn(s){try{const u=new URL(s);return u.protocol==='https:'&&(allowed.has(u.origin)||u.hostname.endsWith('.pages.dev')&&u.hostname!==new URL(HUB).hostname)&&u.username===''&&u.password===''}catch(e){return false}}
 function receive(){const m=location.hash.match(/^#favsync=([A-Za-z0-9_-]+)$/);if(!m)return;try{const x=unpack(m[1]);if(isHub&&x.op==='toggle'&&x.show&&validReturn(x.ret)){localSave(x.show);const payload=pack({op:'state',items:state});const dest=new URL(x.ret);dest.hash='favsync='+payload;location.replace(dest.href);return}if(!isHub&&x.op==='state'&&x.items&&typeof x.items==='object'){state=x.items;persist();sessionStorage.removeItem('o2-fav-pending');history.replaceState(null,'',location.pathname+location.search)}}catch(e){console.warn('Favourite transfer could not be completed',e);if(isHub)history.replaceState(null,'',location.pathname+location.search)}}
-receive();
-document.addEventListener('click',e=>{const b=e.target.closest('[data-fav-id]');if(!b)return;e.preventDefault();e.stopPropagation();const s=registry.get(b.dataset.favId)||state[b.dataset.favId];if(s)save(s)},true);
+if(location.hash.startsWith('#favsync='))history.replaceState(null,'',location.pathname+location.search);
+document.addEventListener('click',e=>{const b=e.target.closest('[data-fav-id]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();const s=registry.get(b.dataset.favId)||state[b.dataset.favId];if(s)save(s)},true);
 window.addEventListener('storage',e=>{if(e.key===KEY){state=read();changed()}});
 window.O2Favourites={register,heart,save,active,isSaved,updateHearts,withFavourites:url=>url,esc};
 })();
